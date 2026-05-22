@@ -1,9 +1,6 @@
 package com.example.improject.model
 
-import androidx.compose.runtime.*
-import com.example.improject.model.ChatMessage
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,68 +18,97 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.improject.UserSession
 
-// 1. 定義資料結構
+// 1. 更新後的資料模型：符合 Firestore 自動轉換需求
 data class ChatMessage(
-    val id: String,
-    val senderName: String,
-    val text: String,
-    val isMe: Boolean
+    val id: String = "",
+    val senderName: String = "",
+    val text: String = "",
+    val senderId: String = "", // 用來判斷是不是「我」發的
+    val groupId: String = "",
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuDrivenChatScreen(
-    isStudent: Boolean = true, // 預設為學生模式
-    onBackClick: () -> Unit = {}
+    isStudent: Boolean = true,
+    userSession: UserSession,
+    onBackClick: () -> Unit = {},
+    // 直接注入同目錄下的 ChatViewModel
+    chatViewModel: ChatViewModel = ChatViewModel()
 ) {
-    // 模擬對話紀錄狀態
-    var messages by remember {
-        mutableStateOf(
-            listOf(
-                ChatMessage("1", "王老師", "各位同學，今天的作業大家都完成了嗎？", false)
-            )
-        )
+    var selectedTabIndex by remember { mutableStateOf(0) }
+
+    // 決定當前要顯示/監聽的群組
+    val currentGroupName = if (isStudent) {
+        if (selectedTabIndex == 0) userSession.className else userSession.clubName
+    } else {
+        userSession.teacherGroup
     }
+
+    // 模擬一個當前使用者 ID (實務上應從 Auth 取得)
+    val myId = if (isStudent) "std_${userSession.className}" else "tch_${userSession.teacherGroup}"
+
+    // 【關鍵】當群組名稱改變時，告訴 ViewModel 切換監聽對象
+    LaunchedEffect(currentGroupName) {
+        chatViewModel.listenForMessages(currentGroupName)
+    }
+
+    // 觀察來自 ViewModel 的即時訊息流
+    val messages by chatViewModel.messages.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("三年二班", fontSize = 24.sp, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFE3F2FD) // 柔和的粉藍色
+            Column {
+                TopAppBar(
+                    title = { Text(currentGroupName.ifEmpty { "未命名群組" }, fontSize = 24.sp, fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFE3F2FD))
                 )
-            )
+                if (isStudent) {
+                    TabRow(selectedTabIndex = selectedTabIndex) {
+                        Tab(
+                            selected = selectedTabIndex == 0,
+                            onClick = { selectedTabIndex = 0 },
+                            text = { Text("我的班級") }
+                        )
+                        Tab(
+                            selected = selectedTabIndex == 1,
+                            onClick = { selectedTabIndex = 1 },
+                            text = { Text("我的社團") }
+                        )
+                    }
+                }
+            }
         },
         bottomBar = {
-            // 根據身分顯示不同的輸入區
             if (isStudent) {
                 StudentMenuInputArea { selectedText ->
-                    messages = messages + ChatMessage(
-                        id = System.currentTimeMillis().toString(),
-                        senderName = "我",
+                    chatViewModel.sendMessage(
                         text = selectedText,
-                        isMe = true
+                        senderName = "學生",
+                        senderId = myId,
+                        groupId = currentGroupName
                     )
                 }
             } else {
                 TeacherKeyboardInputArea { typedText ->
-                    messages = messages + ChatMessage(
-                        id = System.currentTimeMillis().toString(),
-                        senderName = "王老師 (我)",
+                    chatViewModel.sendMessage(
                         text = typedText,
-                        isMe = true
+                        senderName = "老師",
+                        senderId = myId,
+                        groupId = currentGroupName
                     )
                 }
             }
         }
     ) { paddingValues ->
-        // 2. 聊天對話流區塊
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -92,65 +118,48 @@ fun MenuDrivenChatScreen(
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             items(messages) { msg ->
-                MessageBubble(message = msg)
+                // 透過 ID 比對判斷這則訊息是否由當前裝置發出
+                MessageBubble(message = msg, isMe = msg.senderId == myId)
             }
         }
     }
 }
 
-// 3. 學生專用：兩層式分類選單 (取代鍵盤)
+// 學生專用：按鈕選單 (保持不變)
 @Composable
 fun StudentMenuInputArea(onMessageSend: (String) -> Unit) {
-    // 預設詞彙庫
     val vocabularyMap = mapOf(
         "回報狀況" to listOf("我完成了！", "我需要幫忙", "我寫好了"),
         "情緒表達" to listOf("我很開心 😊", "我有點累 😕", "我聽不懂 ❓"),
         "打招呼" to listOf("老師好！", "謝謝老師", "收到！")
     )
 
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
-
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFFF5F5F5))
-            .padding(8.dp)
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        // 第一層：分類按鈕
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            vocabularyMap.keys.forEach { category ->
-                FilterChip(
-                    selected = selectedCategory == category,
-                    onClick = {
-                        // 點擊切換分類
-                        selectedCategory = if (selectedCategory == category) null else category
-                    },
-                    label = { Text(category, fontSize = 20.sp) }, // 字體加大，適合小學生
+        vocabularyMap.forEach { (category, phrases) ->
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                Button(
+                    onClick = { expanded = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF81C784)),
                     shape = RoundedCornerShape(16.dp)
-                )
-            }
-        }
-
-        // 第二層：具體詞彙選單 (當有選擇分類時才顯示)
-        selectedCategory?.let { category ->
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                vocabularyMap[category]?.forEach { phrase ->
-                    Button(
-                        onClick = {
-                            onMessageSend(phrase)
-                            selectedCategory = null // 送出後收合選單
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF81C784)),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(phrase, fontSize = 18.sp)
+                ) {
+                    Text(category, fontSize = 18.sp)
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    phrases.forEach { phrase ->
+                        DropdownMenuItem(
+                            text = { Text(phrase, fontSize = 18.sp) },
+                            onClick = {
+                                onMessageSend(phrase)
+                                expanded = false
+                            }
+                        )
                     }
                 }
             }
@@ -158,11 +167,10 @@ fun StudentMenuInputArea(onMessageSend: (String) -> Unit) {
     }
 }
 
-// 4. 老師專用：傳統文字輸入框
+// 老師專用：鍵盤輸入 (保持不變)
 @Composable
 fun TeacherKeyboardInputArea(onMessageSend: (String) -> Unit) {
     var textState by remember { mutableStateOf("") }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -195,17 +203,17 @@ fun TeacherKeyboardInputArea(onMessageSend: (String) -> Unit) {
     }
 }
 
-// 5. 對話泡泡 UI
+// 氣泡對話框：新增 isMe 參數
 @Composable
-fun MessageBubble(message: ChatMessage) {
-    val backgroundColor = if (message.isMe) Color(0xFFDCF8C6) else Color.White
-    val alignment = if (message.isMe) Alignment.CenterEnd else Alignment.CenterStart
+fun MessageBubble(message: ChatMessage, isMe: Boolean) {
+    val backgroundColor = if (isMe) Color(0xFFDCF8C6) else Color.White
+    val alignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
 
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = alignment
     ) {
-        Column(horizontalAlignment = if (message.isMe) Alignment.End else Alignment.Start) {
+        Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
             Text(
                 text = message.senderName,
                 fontSize = 12.sp,
@@ -220,7 +228,7 @@ fun MessageBubble(message: ChatMessage) {
             ) {
                 Text(
                     text = message.text,
-                    fontSize = 20.sp, // 字體加大，適合小學生閱讀
+                    fontSize = 20.sp,
                     modifier = Modifier.padding(12.dp)
                 )
             }
