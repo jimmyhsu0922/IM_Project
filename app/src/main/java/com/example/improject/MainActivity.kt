@@ -12,6 +12,7 @@ import com.example.improject.model.StudentChatScreen
 import com.example.improject.model.TeacherChatScreen
 import com.example.improject.ui.theme.IMProjectTheme
 import com.example.improject.ui.theme.RoleSelectionScreen
+import com.example.improject.model.TestDataManager
 
 enum class AppScreen {
     ROLE_SELECTION, LOGIN, REGISTER, CHAT
@@ -28,6 +29,10 @@ data class UserSession(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 💡 在 App 一啟動時，直接呼叫獨立檔案裡的造資料功能
+        // TestDataManager.generateTestData()
+
         enableEdgeToEdge()
         setContent {
             IMProjectTheme {
