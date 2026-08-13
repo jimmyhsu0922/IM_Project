@@ -34,13 +34,17 @@ object TestDataManager {
                 val teacherId = String.format("T%d%02d", yearNum, classNum)
                 val teacherDocRef = db.collection("users").document(teacherId)
 
+                // 二年級前五位班導同時擔任各一個社團的老師。
+                val teacherClub = TeacherAssignments.clubFor(teacherId)
+
                 val teacherData = hashMapOf(
                     "username" to teacherId,
                     "password" to teacherId, // 密碼跟帳號一樣方便測試
                     "realName" to "${finalClassName}老師",
                     "isStudent" to false,
-                    "className" to "",
-                    "clubName" to "",
+                    // 老師也保留班級與社團資料，登入後可切換兩個聊天室。
+                    "className" to finalClassName,
+                    "clubName" to teacherClub,
                     "teacherGroup" to finalClassName
                 )
                 batch.set(teacherDocRef, teacherData)
@@ -76,6 +80,37 @@ object TestDataManager {
             }
             .addOnFailureListener { e ->
                 println("====== ❌ 建立失敗: ${e.message} ======")
+            }
+    }
+
+    /**
+     * 已建立測試帳號時，只更新二年級前五位老師，不需重建全部使用者資料。
+     * 執行後：T201～T205 會各自保有班級聊天室及一個社團聊天室。
+     */
+    fun enableSecondGradeClubTeachers() {
+        val db = FirebaseFirestore.getInstance()
+        val batch = db.batch()
+        val classes = listOf("一班", "二班", "三班", "四班", "五班")
+
+        classes.forEachIndexed { index, classSuffix ->
+            val teacherId = String.format("T2%02d", index + 1)
+            val className = "二年$classSuffix"
+            batch.update(
+                db.collection("users").document(teacherId),
+                mapOf(
+                    "className" to className,
+                    "clubName" to TeacherAssignments.clubFor(teacherId),
+                    "teacherGroup" to className
+                )
+            )
+        }
+
+        batch.commit()
+            .addOnSuccessListener {
+                println("====== 二年級五位社團老師設定完成！ ======")
+            }
+            .addOnFailureListener { e ->
+                println("====== 社團老師設定失敗: ${e.message} ======")
             }
     }
 }

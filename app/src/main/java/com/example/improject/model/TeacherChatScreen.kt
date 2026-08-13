@@ -23,7 +23,16 @@ fun TeacherChatScreen(
     chatViewModel: ChatViewModel = viewModel(),
     onBack: () -> Unit
 ) {
-    val currentGroupName = userSession.teacherGroup
+    var selectedTab by remember { mutableStateOf("班級") }
+    val classGroupName = userSession.className.ifBlank { userSession.teacherGroup }
+    // 既有測試帳號尚未更新 Firestore 時，T201～T205 仍可使用預設社團設定。
+    val clubGroupName = userSession.clubName.ifBlank { TeacherAssignments.clubFor(userSession.myId) }
+    val hasClub = clubGroupName.isNotBlank()
+    val currentGroupName = if (selectedTab == "社團" && hasClub) {
+        clubGroupName
+    } else {
+        classGroupName
+    }
     val myId = userSession.myId
 
     LaunchedEffect(currentGroupName) {
@@ -66,6 +75,21 @@ fun TeacherChatScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(innerPadding)
         ) {
+            if (hasClub) {
+                TabRow(selectedTabIndex = if (selectedTab == "班級") 0 else 1) {
+                    Tab(
+                        selected = selectedTab == "班級",
+                        onClick = { selectedTab = "班級" },
+                        text = { Text("我的班級") }
+                    )
+                    Tab(
+                        selected = selectedTab == "社團",
+                        onClick = { selectedTab = "社團" },
+                        text = { Text("我的社團") }
+                    )
+                }
+            }
+
             Box(
                 modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(8.dp),
                 contentAlignment = Alignment.Center
