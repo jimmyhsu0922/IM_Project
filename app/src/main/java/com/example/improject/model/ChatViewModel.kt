@@ -2,12 +2,15 @@ package com.example.improject.model
 
 import androidx.lifecycle.ViewModel
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class ChatViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
+    private var messageListener: ListenerRegistration? = null
+    private var announcementListener: ListenerRegistration? = null
 
     // 儲存當前群組的所有聊天訊息列表
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
@@ -21,7 +24,9 @@ class ChatViewModel : ViewModel() {
      * 連線並即時監聽特定群組的聊天訊息
      */
     fun listenForMessages(groupId: String) {
-        db.collection("messages")
+        // 群組切換時停止舊監聽，避免舊聊天室的資料覆蓋目前畫面。
+        messageListener?.remove()
+        messageListener = db.collection("messages")
             .whereEqualTo("groupId", groupId)
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, _ ->
@@ -35,7 +40,9 @@ class ChatViewModel : ViewModel() {
      * 連線並即時監聽該群組的頂端公告
      */
     fun listenForAnnouncement(groupId: String) {
-        db.collection("announcements")
+        // 公告監聽也必須隨聊天室切換。
+        announcementListener?.remove()
+        announcementListener = db.collection("announcements")
             .document(groupId)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot != null && snapshot.exists()) {
@@ -91,5 +98,10 @@ class ChatViewModel : ViewModel() {
                 .document(messageId)
                 .update("text", newText)
         }
+    }
+
+    override fun onCleared() {
+        messageListener?.remove()
+        announcementListener?.remove()
     }
 }
