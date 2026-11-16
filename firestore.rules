@@ -1,0 +1,108 @@
+rules_version = '2';
+
+// 校園小神通 Firestore 安全規則
+// 貼到 Firebase 主控台 → Firestore Database → 規則，然後按「發布」。
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    // 已登入、有使用者資料、而且沒有被停用
+    function hasProfile() {
+      return signedIn() && exists(myPath()) && get(myPath()).data.active == true;
+    }
+
+    function me() {
+      return get(myPath()).data;
+    }
+
+    function isAdmin() {
+      return hasProfile() && me().role == 'admin';
+    }
+
+    function isTeacher() {
+      return hasProfile() && me().role == 'teacher';
+    }
+
+    // 聊天室代碼等於班級或社團代碼；只有該班級或社團的成員能進入
+    function inRoom(roomId) {
+      return hasProfile() && (me().classId == roomId || me().clubId == roomId);
+    }
+
+    // 第一個管理員：信箱必須和 App 裡 Accounts.ADMIN_ACCOUNT、EMAIL_DOMAIN 一致
+    function isBootstrapAdmin() {
+      return signedIn() && request.auth.token.email == 'admin@xiaoshentong.example.com';
+    }
+
+    function vocabPath(vocabId) {
+      return /databases/$(database)/documents/vocabulary/$(vocabId);
+    }
+
+    // 學生只能送出句庫裡的句子，或該句子的推薦回應
+    function isAllowedStudentText(data) {
+      return data.vocabId is string
+        && data.vocabId != ''
+        && exists(vocabPath(data.vocabId))
+        && (get(vocabPath(data.vocabId)).data.text == data.text
+            || data.text in get(vocabPath(data.vocabId)).data.suggestions);
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        || (isBootstrapAdmin() && request.auth.uid == uid && request.resource.data.role == 'admin');
+      allow update, delete: if isAdmin();
+    }
+
+    match /classes/{classId} {
+      allow read: if hasProfile();
+      allow write: if isAdmin();
+    }
+
+    match /clubs/{clubId} {
+      allow read: if hasProfile();
+      allow write: if isAdmin();
+    }
+
+    match /vocabulary/{vocabId} {
+      allow read: if hasProfile();
+      allow write: if isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAdmin() || inRoom(roomId);
+      allow create, delete: if isAdmin();
+      // 老師只能改自己聊天室的公告欄位
+      allow update: if isAdmin()
+        || (isTeacher() && inRoom(roomId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['announcement']));
+
+      match /messages/{messageId} {
+        allow read: if isAdmin() || inRoom(roomId);
+
+        allow create: if inRoom(roomId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.senderRole == me().role
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && (me().role == 'teacher'
+              || (me().role == 'student' && isAllowedStudentText(request.resource.data)));
+
+        // 老師只能編輯自己發的訊息，而且只能改內容
+        allow update: if isTeacher() && inRoom(roomId)
+          && resource.data.senderId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited']);
+
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}

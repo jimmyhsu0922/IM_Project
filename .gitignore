@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# 重構前的備份與 Kotlin 編譯暫存，不需要上傳
+/_backup_before_refactor
+/.kotlin
