@@ -4,35 +4,36 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.improject.model.StudentChatScreen
-import com.example.improject.model.TeacherChatScreen
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.improject.domain.Role
+import com.example.improject.ui.SessionState
+import com.example.improject.ui.SessionViewModel
+import com.example.improject.ui.admin.AdminScreen
+import com.example.improject.ui.auth.LoginScreen
+import com.example.improject.ui.student.StudentChatScreen
+import com.example.improject.ui.teacher.TeacherChatScreen
 import com.example.improject.ui.theme.IMProjectTheme
-import com.example.improject.ui.theme.RoleSelectionScreen
-import com.example.improject.model.TestDataManager
-
-enum class AppScreen {
-    ROLE_SELECTION, LOGIN, REGISTER, CHAT
-}
-
-data class UserSession(
-    val myId: String = "",
-    val realName: String = "",
-    val className: String = "",
-    val clubName: String = "",
-    val teacherGroup: String = ""
-)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // 💡 在 App 一啟動時，直接呼叫獨立檔案裡的造資料功能
-        // TestDataManager.generateTestData()
-
         enableEdgeToEdge()
         setContent {
             IMProjectTheme {
@@ -40,61 +41,57 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    var currentScreen by remember { mutableStateOf(AppScreen.ROLE_SELECTION) }
-                    var isStudent by remember { mutableStateOf(true) }
-                    var userSession by remember { mutableStateOf(UserSession()) }
+                    AppRoot()
+                }
+            }
+        }
+    }
+}
 
-                    when (currentScreen) {
-                        AppScreen.ROLE_SELECTION -> {
-                            RoleSelectionScreen(
-                                onRoleSelected = { studentRole ->
-                                    isStudent = studentRole
-                                    currentScreen = AppScreen.LOGIN
-                                }
-                            )
-                        }
-                        AppScreen.LOGIN -> {
-                            AuthScreen(
-                                title = if (isStudent) "學生登入" else "老師登入",
-                                actionName = "登入",
-                                isLogin = true,
-                                isStudent = isStudent,
-                                onSuccess = { myId, realName, className, clubName, teacherGroup ->
-                                    userSession = UserSession(myId, realName, className, clubName, teacherGroup)
-                                    currentScreen = AppScreen.CHAT
-                                },
-                                onSwitchMode = { currentScreen = AppScreen.REGISTER },
-                                onBack = { currentScreen = AppScreen.ROLE_SELECTION }
-                            )
-                        }
-                        AppScreen.REGISTER -> {
-                            AuthScreen(
-                                title = if (isStudent) "學生註冊" else "老師註冊",
-                                actionName = "註冊",
-                                isLogin = false,
-                                isStudent = isStudent,
-                                onSuccess = { myId, realName, className, clubName, teacherGroup ->
-                                    userSession = UserSession(myId, realName, className, clubName, teacherGroup)
-                                    currentScreen = AppScreen.CHAT
-                                },
-                                onSwitchMode = { currentScreen = AppScreen.LOGIN },
-                                onBack = { currentScreen = AppScreen.ROLE_SELECTION }
-                            )
-                        }
-                        AppScreen.CHAT -> {
-                            // 💡 根據登入身份，分流導向完全不同的獨立 Compose 檔案
-                            if (isStudent) {
-                                StudentChatScreen(
-                                    userSession = userSession,
-                                    onBack = { currentScreen = AppScreen.ROLE_SELECTION }
-                                )
-                            } else {
-                                TeacherChatScreen(
-                                    userSession = userSession,
-                                    onBack = { currentScreen = AppScreen.ROLE_SELECTION }
-                                )
-                            }
-                        }
+/**
+ * 一次登入期間專用的 ViewModel 容器。
+ * 登出時整個清掉，聊天室與後台的資料監聽會跟著停止，
+ * 下一位登入的人（即使是同一個帳號）拿到的是全新的狀態。
+ */
+private class LoginSessionStoreOwner : ViewModelStoreOwner {
+    override val viewModelStore: ViewModelStore = ViewModelStore()
+}
+
+/** 依登入狀態與角色決定顯示哪個畫面。 */
+@Composable
+fun AppRoot(sessionViewModel: SessionViewModel = viewModel()) {
+    val state by sessionViewModel.state.collectAsState()
+    val error by sessionViewModel.error.collectAsState()
+    val busy by sessionViewModel.busy.collectAsState()
+    val failureCount by sessionViewModel.failureCount.collectAsState()
+
+    when (val current = state) {
+        SessionState.Loading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        SessionState.SignedOut -> {
+            LoginScreen(
+                busy = busy,
+                error = error,
+                failureCount = failureCount,
+                onLogin = { account, password -> sessionViewModel.login(account, password) }
+            )
+        }
+        is SessionState.SignedIn -> {
+            val user = current.user
+            val onLogout = { sessionViewModel.logout() }
+            key(user.uid) {
+                val storeOwner = remember { LoginSessionStoreOwner() }
+                DisposableEffect(storeOwner) {
+                    onDispose { storeOwner.viewModelStore.clear() }
+                }
+                CompositionLocalProvider(LocalViewModelStoreOwner provides storeOwner) {
+                    when (user.role) {
+                        Role.STUDENT -> StudentChatScreen(user = user, onLogout = onLogout)
+                        Role.TEACHER -> TeacherChatScreen(user = user, onLogout = onLogout)
+                        Role.ADMIN -> AdminScreen(user = user, onLogout = onLogout)
                     }
                 }
             }
