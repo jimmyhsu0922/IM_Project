@@ -28,6 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import com.example.improject.ui.components.BrandIcon
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -66,38 +71,17 @@ fun LoginScreen(
             .imePadding()
             .verticalScroll(rememberScrollState())
     ) {
-        // 標題區
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp)
-                )
-                .statusBarsPadding()
-                .padding(start = 28.dp, end = 28.dp, top = 56.dp, bottom = 36.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 20.dp)
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(24.dp))
+                .padding(vertical = 34.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column {
-                Text(
-                    text = "校園\n小神通",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                // 一道短線，呼應主色
-                Box(
-                    modifier = Modifier
-                        .width(64.dp)
-                        .height(6.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(3.dp))
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "跟同學說一句好話",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-            }
+            BrandIcon()
+            Spacer(Modifier.height(24.dp))
+            Text("校園小神通", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(20.dp))
+            Text("跟同學說一句好話", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         // 表單
@@ -105,25 +89,33 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 28.dp, vertical = 28.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
+            Text("登入", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(24.dp))
+            Text("學號或工號", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = account,
                 onValueChange = { account = it },
-                label = { Text("學號或工號") },
+                placeholder = { Text("輸入學號或工號") },
                 singleLine = true,
                 enabled = !busy,
-                shape = MaterialTheme.shapes.small,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest, focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest, unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("密碼", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("密碼") },
+                placeholder = { Text("輸入密碼") },
                 singleLine = true,
                 enabled = !busy,
-                shape = MaterialTheme.shapes.small,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest, focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest, unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant),
                 visualTransformation = if (passwordVisible) {
                     VisualTransformation.None
                 } else {
@@ -154,6 +146,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
             Button(
+                shape = RoundedCornerShape(14.dp),
                 onClick = { onLogin(account, password) },
                 enabled = !busy,
                 modifier = Modifier

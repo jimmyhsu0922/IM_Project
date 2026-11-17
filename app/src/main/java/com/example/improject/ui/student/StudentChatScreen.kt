@@ -1,5 +1,10 @@
 package com.example.improject.ui.student
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.ui.text.font.FontWeight
+import com.example.improject.ui.components.*
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,20 +88,7 @@ fun StudentChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(room?.name ?: "聊天室")
-                        Text(user.realName, fontSize = 13.sp)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "登出")
-                    }
-                },
-                colors = appTopBarColors()
-            )
+            AppHeader(room?.name ?: "聊天室", "校園小神通", onLogout = onLogout)
         }
     ) { innerPadding ->
         Column(
@@ -105,18 +97,7 @@ fun StudentChatScreen(
                 .padding(innerPadding)
         ) {
             if (hasClub) {
-                TabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("我的班級") }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("我的社團") }
-                    )
-                }
+            AppSegments(listOf("我的班級", "我的社團"), selectedTab) { selectedTab = it }
             }
 
             if (roomId.isBlank()) {
@@ -133,7 +114,7 @@ fun StudentChatScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(messages, key = { it.id }) { message: ChatMessage ->

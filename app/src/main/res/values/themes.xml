@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.IMProject" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- 固定淺色，並關閉系統的「強制深色」 -->
+    <style name="Theme.IMProject" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+    </style>
 </resources>

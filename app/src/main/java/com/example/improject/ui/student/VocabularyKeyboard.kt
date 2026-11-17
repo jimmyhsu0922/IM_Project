@@ -3,6 +3,7 @@ package com.example.improject.ui.student
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -65,7 +68,7 @@ fun VocabularyKeyboard(
         Surface(
             shape = trayShape,
             color = MaterialTheme.colorScheme.surfaceContainerLowest,
-            shadowElevation = 3.dp,
+            shadowElevation = 0.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
@@ -79,6 +82,7 @@ fun VocabularyKeyboard(
     }
 
     var selectedCategory by remember { mutableIntStateOf(1) }
+    var categoriesExpanded by remember { mutableStateOf(false) }
     // 已經回應過的訊息代碼：回應後就收起推薦，避免干擾。
     var answeredMessageId by remember { mutableStateOf("") }
 
@@ -101,7 +105,7 @@ fun VocabularyKeyboard(
     Surface(
         shape = trayShape,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shadowElevation = 3.dp,
+        shadowElevation = 0.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 12.dp)) {
@@ -117,6 +121,8 @@ fun VocabularyKeyboard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 10.dp)
+                        .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(16.dp))
+                        .padding(10.dp)
                 ) {
                     Text(
                         text = "可以這樣回",
@@ -131,10 +137,10 @@ fun VocabularyKeyboard(
                     ) {
                         items(suggestions) { suggestion: String ->
                             Surface(
-                                shape = RoundedCornerShape(50),
+                                shape = RoundedCornerShape(14.dp),
                                 color = MaterialTheme.colorScheme.secondaryContainer,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
+                                    .clip(RoundedCornerShape(14.dp))
                                     .clickable {
                                         onSend(suggestion, matchedId, matchedCategory)
                                         answeredMessageId = latestId
@@ -142,7 +148,7 @@ fun VocabularyKeyboard(
                             ) {
                                 Text(
                                     text = suggestion,
-                                    fontSize = 15.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
@@ -153,31 +159,33 @@ fun VocabularyKeyboard(
                 }
             }
 
-            // 分類
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 10.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                items((1..CATEGORY_COUNT).toList()) { category: Int ->
-                    val isSelected = selectedCategory == category
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = if (isSelected) CrayonColors[category - 1] else Color.Transparent,
-                        border = BorderStroke(
-                            width = 1.dp,
-                            color = if (isSelected) CrayonEdges[category - 1] else MaterialTheme.colorScheme.outlineVariant
-                        ),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .clickable { selectedCategory = category }
-                    ) {
-                        Text(
-                            text = band.categoryName(category),
-                            fontSize = 15.sp,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isSelected) Ink else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
-                        )
+                Text("句子貼紙", fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Text("點一句就送出", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(Modifier.weight(1f), shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.primary) {
+                    Text("✓  " + band.categoryName(selectedCategory), fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.heightIn(min = 48.dp).padding(12.dp))
+                }
+                Box(Modifier.weight(1f)) {
+                    OutlinedButton(onClick = { categoriesExpanded = true },
+                        shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("全部分類  ⌄", fontSize = 14.sp)
+                    }
+                    DropdownMenu(expanded = categoriesExpanded, onDismissRequest = { categoriesExpanded = false }) {
+                        (1..CATEGORY_COUNT).forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(band.categoryName(category)) },
+                                onClick = { selectedCategory = category; categoriesExpanded = false })
+                        }
                     }
                 }
             }
@@ -193,12 +201,12 @@ fun VocabularyKeyboard(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(124.dp)
             ) {
                 items(filtered, key = { it.id }) { vocab: VocabEntry ->
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = CrayonColors[colorIndex],
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         border = BorderStroke(1.dp, CrayonEdges[colorIndex]),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -217,10 +225,10 @@ fun VocabularyKeyboard(
                         ) {
                             Text(
                                 text = vocab.text,
-                                fontSize = 15.sp,
+                                fontSize = 17.sp,
                                 lineHeight = 19.sp,
-                                fontWeight = FontWeight.Normal,
-                                color = Ink,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
