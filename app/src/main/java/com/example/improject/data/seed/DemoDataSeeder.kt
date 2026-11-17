@@ -62,7 +62,7 @@ class DemoDataSeeder(
     }
 
     private fun demoAccounts(): List<DemoAccount> {
-        val teacherNames = listOf("陳老師", "林老師", "黃老師")
+        val teacherNames = listOf("陳怡君", "林志明", "黃淑芬")
         val teacherClubs = listOf("club-guitar", "club-band", "")
         val studentNames = listOf(
             listOf("王小明", "李小華", "張小美", "陳小安"),

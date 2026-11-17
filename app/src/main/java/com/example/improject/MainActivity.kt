@@ -1,7 +1,9 @@
 package com.example.improject
 
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -31,10 +33,17 @@ import com.example.improject.ui.student.StudentChatScreen
 import com.example.improject.ui.teacher.TeacherChatScreen
 import com.example.improject.ui.theme.IMProjectTheme
 
+/** 舊款三鍵導覽列的半透明白底。 */
+private val LIGHT_NAV_SCRIM = AndroidColor.argb(0xE6, 0xFF, 0xFF, 0xFF)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // 固定淺色：狀態列與導覽列一律用深色圖示，手機開深色模式也看得到。
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(LIGHT_NAV_SCRIM, LIGHT_NAV_SCRIM)
+        )
         setContent {
             IMProjectTheme {
                 Surface(

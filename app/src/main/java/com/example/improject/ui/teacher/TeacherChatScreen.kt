@@ -1,18 +1,25 @@
 package com.example.improject.ui.teacher
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.ui.text.font.FontWeight
+import com.example.improject.ui.components.*
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -118,45 +125,20 @@ fun TeacherChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(room?.name ?: "聊天室")
-                        Text("${user.realName}（老師）", fontSize = 13.sp)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showStats = true }) {
-                        Icon(Icons.Default.Info, contentDescription = "互動統計")
-                    }
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "登出")
-                    }
-                },
-                colors = appTopBarColors()
-            )
-        }
+            AppHeader(room?.name ?: "聊天室", user.realName + " 老師", onLogout = onLogout)
+        },
+        // 系統列與鍵盤的空間由下面的 Column 自己處理，Scaffold 不再另外加。
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .consumeWindowInsets(innerPadding)
-                .imePadding()
+                // 底部只留「導覽列」和「鍵盤」兩者中較高的那個，鍵盤收起時也不會多出空白。
+                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
         ) {
             if (showTabs) {
-                TabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("我的班級") }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("我的社團") }
-                    )
-                }
+            AppSegments(listOf("我的班級", "我的社團"), selectedTab) { selectedTab = it }
             }
 
             if (roomId.isBlank()) {
@@ -166,31 +148,27 @@ fun TeacherChatScreen(
                 return@Column
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "長按自己的訊息可以設為公告或編輯",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-            }
-
             AnnouncementBar(
                 announcement = room?.announcement,
                 onClear = { chatViewModel.clearAnnouncement() }
             )
+
+            DesignCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
+                Row(Modifier.clickable { showStats = true }.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("▥", color = MaterialTheme.colorScheme.primary, fontSize = 22.sp)
+                    Text("互動統計", Modifier.weight(1f).padding(start = 12.dp),
+                        color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text("›", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
 
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(messages, key = { it.id }) { message: ChatMessage ->
@@ -255,7 +233,14 @@ fun TeacherChatScreen(
                 }
             }
 
-            TeacherKeyboardInput(onMessageSend = { text -> chatViewModel.send(user, text) })
+            Surface(shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("長按自己的訊息可編輯或設為公告", fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TeacherKeyboardInput(onMessageSend = { text -> chatViewModel.send(user, text) })
+                }
+            }
         }
     }
 
@@ -306,11 +291,13 @@ fun TeacherKeyboardInput(onMessageSend: (String) -> Unit) {
             onValueChange = { inputText = it },
             placeholder = { Text("寫給全班的話") },
             maxLines = 3,
-            shape = MaterialTheme.shapes.large,
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier.weight(1f)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Button(
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.heightIn(min = 54.dp),
             onClick = {
                 if (inputText.isNotBlank()) {
                     onMessageSend(inputText)

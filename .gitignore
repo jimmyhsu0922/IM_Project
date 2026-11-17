@@ -17,3 +17,7 @@ local.properties
 # 重構前的備份與 Kotlin 編譯暫存，不需要上傳
 /_backup_before_refactor
 /.kotlin
+
+# 報告書、截圖等產出檔，不放進程式碼儲存庫
+/Claude outputs
+/output

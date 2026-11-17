@@ -57,7 +57,8 @@ fun AnnouncementBar(announcement: Announcement?, onClear: (() -> Unit)? = null) 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f))
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(16.dp))
             .padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -136,7 +137,12 @@ fun MessageBubble(
             .padding(horizontal = 4.dp),
         contentAlignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
     ) {
-        Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
+        Row(verticalAlignment = Alignment.Top) {
+            if (!isMe) {
+                InitialAvatar(message.senderName, message.senderRole)
+                Spacer(Modifier.width(8.dp))
+            }
+            Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
             if (!isMe) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -156,11 +162,7 @@ fun MessageBubble(
             }
 
             Surface(
-                shape = if (isMe) {
-                    RoundedCornerShape(topStart = 18.dp, topEnd = 4.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
-                } else {
-                    RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
-                },
+                shape = RoundedCornerShape(16.dp),
                 color = bubbleColor,
                 border = border,
                 modifier = Modifier
@@ -202,6 +204,7 @@ fun MessageBubble(
                     }
                 }
             }
+        }
         }
     }
 }

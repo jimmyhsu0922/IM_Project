@@ -1,5 +1,11 @@
 package com.example.improject.ui.admin
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.ui.text.font.FontWeight
+import com.example.improject.ui.components.*
+import androidx.compose.ui.draw.clip
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +56,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -90,15 +95,7 @@ fun AdminScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("校園小神通 管理後台") },
-                actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "登出")
-                    }
-                },
-                colors = appTopBarColors()
-            )
+            AppHeader("管理後台", "校園小神通", onLogout = onLogout)
         }
     ) { innerPadding ->
         Column(
@@ -106,15 +103,7 @@ fun AdminScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            TabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(title) }
-                    )
-                }
-            }
+            AppSegments(tabs, selectedTab) { selectedTab = it }
             when (selectedTab) {
                 0 -> AccountsTab(adminViewModel)
                 1 -> SchoolTab(adminViewModel)
@@ -141,16 +130,13 @@ private fun AccountsTab(vm: AdminViewModel) {
     val clubNames = remember(clubs) { clubs.associate { it.id to it.name } }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Button(
-            onClick = { showCreate = true },
-            enabled = !busy,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Text("＋ 新增帳號")
+        Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("使用者帳號", Modifier.weight(1f), fontSize = 21.sp, fontWeight = FontWeight.Bold)
+            Button(onClick = { showCreate = true }, enabled = !busy, shape = RoundedCornerShape(14.dp)) {
+                Text("＋ 新增帳號")
+            }
         }
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 20.dp)) {
             items(users, key = { it.uid }) { item: AppUser ->
                 val parts = listOfNotNull(
                     item.role.label,
@@ -158,14 +144,19 @@ private fun AccountsTab(vm: AdminViewModel) {
                     clubNames[item.clubId]
                 )
                 ListItem(
-                    headlineContent = { Text("${item.realName}（${item.account}）") },
-                    supportingContent = { Text(parts.joinToString("・")) },
+                    headlineContent = { Text(item.realName, fontWeight = FontWeight.Bold) },
+                    leadingContent = { InitialAvatar(item.realName, item.role) },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                    supportingContent = { Text(item.account + "・" + parts.joinToString("・"), fontSize = 12.sp) },
                     trailingContent = {
-                        if (!item.active) {
-                            Text("已停用", color = MaterialTheme.colorScheme.error)
+                        Surface(shape = RoundedCornerShape(12.dp),
+                            color = if (item.active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer) {
+                            Text(if (item.active) "啟用" else "已停用", fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                color = if (item.active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer)
                         }
                     },
-                    modifier = Modifier.clickable(enabled = item.role != Role.ADMIN) { editing = item }
+                    modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(enabled = item.role != Role.ADMIN) { editing = item }
                 )
                 HorizontalDivider()
             }

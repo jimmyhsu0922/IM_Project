@@ -1,6 +1,5 @@
 package com.example.improject.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +23,9 @@ private val LightColors = lightColorScheme(
     onSecondaryContainer = Ink,
     tertiary = Color(0xFF5E8296),
     onTertiary = Color.White,
+    // 學生頭像的底色
+    tertiaryContainer = Color(0xFFD6EAF3),
+    onTertiaryContainer = Color(0xFF1F4456),
     background = Paper,
     onBackground = Ink,
     surface = Paper,
@@ -80,7 +82,8 @@ private val AppShapes = Shapes(
 
 @Composable
 fun IMProjectTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    // 不論手機設定深色或淺色，一律用淺色顯示。
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     // 不使用手機的動態配色，讓每支手機上看到的都是同一套配色。
@@ -96,7 +99,7 @@ fun IMProjectTheme(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun appTopBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-    containerColor = MaterialTheme.colorScheme.primaryContainer,
+    containerColor = MaterialTheme.colorScheme.background,
     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer

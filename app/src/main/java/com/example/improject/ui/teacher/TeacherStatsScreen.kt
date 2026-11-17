@@ -1,5 +1,6 @@
 package com.example.improject.ui.teacher
 
+import com.example.improject.ui.components.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -63,15 +64,7 @@ fun TeacherStatsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("$roomName 互動統計") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                colors = appTopBarColors()
-            )
+            AppHeader("互動統計", roomName, onBack = onBack)
         }
     ) { innerPadding ->
         LazyColumn(
@@ -82,21 +75,24 @@ fun TeacherStatsScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    "統計範圍：最近 300 則訊息中，學生發出的 ${studentMessages.size} 則。",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer,
+                    RoundedCornerShape(18.dp)).padding(16.dp)) {
+                    Text("最近 300 則聊天室訊息", fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(12.dp))
+                    Text("其中有 ${studentMessages.size} 則學生發言", fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("各類句子使用次數", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            items((1..CATEGORY_COUNT).toList()) { category: Int ->
-                StatBar(
-                    label = CATEGORY_LABELS[category - 1],
-                    count = byCategory[category - 1],
-                    max = categoryMax
-                )
+            item {
+                DesignCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        (1..CATEGORY_COUNT).forEach { category ->
+                            StatBar(CATEGORY_LABELS[category - 1], byCategory[category - 1], categoryMax)
+                        }
+                    }
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(24.dp))
@@ -106,8 +102,12 @@ fun TeacherStatsScreen(
                     Text("還沒有學生發言。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            items(byStudent) { pair: Pair<String, Int> ->
-                StatBar(label = pair.first, count = pair.second, max = studentMax)
+            item {
+                DesignCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        byStudent.forEach { pair -> StatBar(pair.first, pair.second, studentMax) }
+                    }
+                }
             }
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
@@ -120,21 +120,21 @@ private fun StatBar(label: String, count: Int, max: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, fontSize = 14.sp, modifier = Modifier.width(88.dp), maxLines = 1)
+        Text(label, fontSize = 14.sp, modifier = Modifier.width(98.dp))
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(18.dp)
-                .background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                .height(10.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(5.dp))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction)
-                    .height(18.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                    .height(10.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(5.dp))
             )
         }
         Text(
